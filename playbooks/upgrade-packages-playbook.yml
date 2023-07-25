@@ -1,0 +1,26 @@
+- name: Upgrade hosts packages
+  hosts: all
+  tasks: 
+    - name: Set become_mode variable
+      set_fact: 
+        # in case "become" isn't needed for any host, create a extra var "become_disabled_hosts" and put the hostnames in it
+        become_mode: "{{ 'false' if (become_disabled_hosts is defined and ansible_hostname in become_disabled_hosts | default([])) else 'true' }}"
+      run_once: true
+      delegate_to: localhost
+    - name: Update repositories
+      become: "{{ become_mode }}"
+      apt: 
+        update_cache: true
+    - name: Upgrade packages
+      become: "{{ become_mode }}"
+      apt: 
+        upgrade: 'yes'
+    - name: Send message to Discord
+      uri: 
+        url: "{{ discord_webhook }}"
+        method: POST
+        body_format: json
+        body: '{"content": "**{{ ansible_play_name }}** executed on host **{{ inventory_hostname }}**"}'
+        headers: 
+          Content-Type: application/json
+        status_code: 204

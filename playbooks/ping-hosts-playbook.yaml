@@ -1,0 +1,15 @@
+- name: Ping hosts
+  hosts: all
+  gather_facts: false
+  tasks: 
+    - name: Test machine
+      ansible.builtin.ping: 
+    - name: Send message to Discord
+      uri: 
+        url: "{{ discord_webhook }}"
+        method: POST
+        body_format: json
+        body: '{"content": "**{{ ansible_play_name }}** executed on host **{{ inventory_hostname }}**"}'
+        headers: 
+          Content-Type: application/json
+        status_code: 204
