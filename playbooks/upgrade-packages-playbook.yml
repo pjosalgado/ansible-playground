@@ -13,14 +13,47 @@
         update_cache: true
     - name: Upgrade packages
       become: "{{ become_mode }}"
+      register: debian
       apt: 
         upgrade: 'yes'
-    - name: Send message to Discord
-      uri: 
+    - name: Get installed and updated packages
+      when: debian.changed
+      shell: grep -E "^$(date +%Y-%m-%d).+ (install|upgrade) " /var/log/dpkg.log |cut -d " " -f 3-5
+      register: result
+    - name: Show changed packages
+      when: debian.changed
+      debug: msg="{{ result.stdout_lines }}"
+    - name: Check if host needs to reboot
+      stat:
+        path: /var/run/reboot-required
+      register: p
+    - name: Send message to Discord if reboot is required
+      when: p.stat.exists
+      uri:
         url: "{{ discord_webhook }}"
         method: POST
         body_format: json
-        body: '{"content": "**{{ ansible_play_name }}** executed on host **{{ inventory_hostname }}**"}'
-        headers: 
+        body: '{"content": ":warning: **{{ ansible_play_name }}** executed on host **{{ inventory_hostname }}** - **reboot is required!**"}'
+        headers:
+          Content-Type: application/json
+        status_code: 204
+    - name: Send message to Discord if reboot is not required
+      when: not p.stat.exists
+      uri:
+        url: "{{ discord_webhook }}"
+        method: POST
+        body_format: json
+        body: '{"content": ":information_source: **{{ ansible_play_name }}** executed on host **{{ inventory_hostname }}**"}'
+        headers:
+          Content-Type: application/json
+        status_code: 204
+    - name: Send message to Discord with updated packages
+      when: debian.changed
+      uri:
+        url: "{{ discord_webhook }}"
+        method: POST
+        body_format: json
+        body: '{"content": ":information_source: **{{ inventory_hostname }}** updated packages: {{ result.stdout_lines }}"}'
+        headers:
           Content-Type: application/json
         status_code: 204
