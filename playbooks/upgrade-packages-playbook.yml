@@ -53,7 +53,7 @@
         url: "{{ discord_webhook }}"
         method: POST
         body_format: json
-        body: '{"content": ":information_source: **{{ inventory_hostname }}** updated packages: {{ result.stdout_lines }}"}'
+        body: '{"content": ":information_source: **{{ inventory_hostname }}** changed packages: {{ result.stdout_lines }}"}'
         headers:
           Content-Type: application/json
         status_code: 204
